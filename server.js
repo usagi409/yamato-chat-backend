@@ -6,7 +6,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// 起動時にテーブルを自動作成
+// 自動テーブル作成
 pool.query(`
     CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
@@ -14,12 +14,20 @@ pool.query(`
         message TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-`).catch(err => console.error("テーブル作成エラー:", err));
+`).catch(err => console.error(err));
 
 app.use(express.json());
+
+// 【重要】強力なCORS設定
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Content-Type");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    
+    // OPTIONSメソッド（プリフライト）には即座に200を返す
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
     next();
 });
 
