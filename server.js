@@ -6,6 +6,16 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// 起動時にテーブルを自動作成
+pool.query(`
+    CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(50),
+        message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+`).catch(err => console.error("テーブル作成エラー:", err));
+
 app.use(express.json());
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
@@ -21,9 +31,11 @@ app.get('/api/messages', async (req, res) => {
 });
 
 app.post('/api/messages', async (req, res) => {
-  const { username, message } = req.body;
-  await pool.query('INSERT INTO messages (username, message) VALUES ($1, $2)', [username, message]);
-  res.sendStatus(200);
+  try {
+    const { username, message } = req.body;
+    await pool.query('INSERT INTO messages (username, message) VALUES ($1, $2)', [username, message]);
+    res.sendStatus(200);
+  } catch (err) { res.status(500).send(err.message); }
 });
 
 app.listen(process.env.PORT || 3000);
