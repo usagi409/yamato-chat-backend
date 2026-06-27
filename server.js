@@ -41,7 +41,7 @@ app.use((req, res, next) => {
 app.get('/api/messages', async (req, res) => {
   try {
     // リミッターを外し、古い順（ASC）に全件取得するように変更
-    const result = await pool.query('SELECT * FROM messages ORDER BY created_at ASC');
+    const result = await pool.query('SELECT * FROM messages ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (err) { res.status(500).send(err.message); }
 });
