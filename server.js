@@ -6,6 +6,9 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
+// ★追加: 環境変数からゲートパスワードを取得 (なければデフォルト値)
+const GATE_PASSWORD = process.env.GATE_PASSWORD || "yamato2026";
+
 // 起動時にテーブルとカラムを自動セットアップ
 async function setupDB() {
     try {
@@ -19,7 +22,6 @@ async function setupDB() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        // colorカラムとreply_to_idカラムが存在しない場合に追加
         await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS color VARCHAR(20);`).catch(() => {});
         await pool.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id INT;`).catch(() => {});
     } catch (err) {
@@ -38,9 +40,18 @@ app.use((req, res, next) => {
     next();
 });
 
+// ★追加: パスワード認証API
+app.post('/api/auth', (req, res) => {
+    const { password } = req.body;
+    if (password === GATE_PASSWORD) {
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, message: "パスワードが違います" });
+    }
+});
+
 app.get('/api/messages', async (req, res) => {
   try {
-    // リミッターを外し、古い順（ASC）に全件取得するように変更
     const result = await pool.query('SELECT * FROM messages ORDER BY created_at DESC');
     res.json(result.rows);
   } catch (err) { res.status(500).send(err.message); }
@@ -48,7 +59,6 @@ app.get('/api/messages', async (req, res) => {
 
 app.post('/api/messages', async (req, res) => {
   try {
-    // フロントから送られてきた color を受け取って保存する
     const { username, color, message, reply_to_id } = req.body;
     await pool.query(
         'INSERT INTO messages (username, color, message, reply_to_id) VALUES ($1, $2, $3, $4)', 
